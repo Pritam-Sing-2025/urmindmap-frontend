@@ -15,6 +15,7 @@ import {
   slugify,
   updateMindMapNodeTitle
 } from '../lib/mindmap';
+import { apiSetupMessage, buildApiUrl, isApiConfigured } from '../lib/api';
 import { decodeSharePayload, encodeSharePayload } from '../lib/share';
 
 const SAVED_MAPS_STORAGE_KEY = 'ai-mindmap-saves';
@@ -47,7 +48,6 @@ function downloadFile(filename, content, mimeType) {
 export default function AppPage({ theme, onToggleTheme }) {
   const [searchParams] = useSearchParams();
   const shareLoadedRef = useRef(false);
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
   const canvasRef = useRef(null);
   const reactFlowInstanceRef = useRef(null);
 
@@ -149,12 +149,17 @@ export default function AppPage({ theme, onToggleTheme }) {
       return;
     }
 
+    if (!isApiConfigured) {
+      setErrorMessage(apiSetupMessage);
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage('');
     setFeedbackMessage('');
 
     try {
-      const response = await fetch(`${apiBaseUrl}/generate-mindmap`, {
+      const response = await fetch(buildApiUrl('/generate-mindmap'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -162,21 +167,37 @@ export default function AppPage({ theme, onToggleTheme }) {
         body: JSON.stringify({ text: notes.trim() })
       });
 
-      const payload = await response.json();
+      const isJsonResponse = response.headers
+        .get('content-type')
+        ?.includes('application/json');
+      const payload = isJsonResponse ? await response.json() : null;
 
       if (!response.ok) {
-        throw new Error(payload.error || 'Failed to generate the mind map.');
+        throw new Error(payload?.error || 'Failed to generate the mind map.');
+      }
+
+      if (!payload?.mindMap) {
+        throw new Error('The API response did not include a valid mind map.');
       }
 
       setCollapsedBranches([]);
       setMindMap(normalizeMindMapData(payload.mindMap));
-      setFeedbackMessage(`Generated with ${payload.model || 'Gemini'}.`);
+      setFeedbackMessage(
+        payload.model
+          ? `Generated with ${payload.model}.`
+          : 'Mind map generated successfully.'
+      );
     } catch (error) {
-      setErrorMessage(error.message || 'Failed to generate the mind map.');
+      const message =
+        error instanceof TypeError
+          ? 'Could not reach the API. Check VITE_API_BASE_URL and confirm your backend allows requests from the Vercel frontend.'
+          : error.message || 'Failed to generate the mind map.';
+
+      setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
-  }, [apiBaseUrl, notes]);
+  }, [notes]);
 
   const handleClear = useCallback(() => {
     setNotes('');
@@ -287,6 +308,13 @@ export default function AppPage({ theme, onToggleTheme }) {
           </motion.div>
         )}
 
+        {!isApiConfigured && !errorMessage && (
+          <div className="glass-panel flex items-center gap-3 rounded-[24px] px-4 py-4 text-sm text-[color:var(--text-strong)]">
+            <AlertCircle size={18} className="shrink-0" />
+            <span>{apiSetupMessage}</span>
+          </div>
+        )}
+
         <div className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
           <TextPanel
             notes={notes}
@@ -295,6 +323,7 @@ export default function AppPage({ theme, onToggleTheme }) {
             savedMaps={savedMaps}
             onLoadSavedMap={handleLoadSavedMap}
             isLoading={isLoading}
+            isApiConfigured={isApiConfigured}
           />
 
           <div className="flex flex-col gap-4">
@@ -341,8 +370,8 @@ export default function AppPage({ theme, onToggleTheme }) {
 
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] border border-white/15 bg-white/10 px-5 py-4 text-sm text-[color:var(--text-muted)] backdrop-blur-xl">
           <div>
-            Built with React, Vite, Tailwind CSS, Framer Motion, React Flow, Express,
-            and the Gemini API.
+            Frontend-ready for Vercel with React, Vite, Tailwind CSS, Framer Motion,
+            and React Flow.
           </div>
           <Link to="/" className="inline-flex items-center gap-2 font-semibold text-[color:var(--text-strong)]">
             Back to landing page

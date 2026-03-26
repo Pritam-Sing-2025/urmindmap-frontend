@@ -1,33 +1,28 @@
 # AI Notes to Mind Map Generator
 
-Full-stack web app that turns pasted notes or paragraphs into an interactive visual mind map using Gemini.
+Frontend-only React app for turning pasted notes into an interactive mind map UI. This folder is prepared to deploy on Vercel and connect to a separately deployed backend through `VITE_API_BASE_URL`.
 
 ## Stack
 
-- Frontend: React + Vite
-- Styling: Tailwind CSS
-- Animations: Framer Motion
-- Visualization: React Flow (`@xyflow/react`)
-- Backend: Node.js + Express
-- AI: Gemini API
-- Deployment: Vercel for the client, Render or Railway for the server
+- React 18 + Vite
+- Tailwind CSS 4
+- Framer Motion
+- React Flow (`@xyflow/react`)
+- `html-to-image`
+- `react-router-dom`
 
-## Features
+## Frontend Features
 
-- Paste notes and generate a structured mind map with AI
-- Modern landing page and polished app workspace
-- Glassmorphism cards, gradients, and motion-driven UI
+- Landing page plus app workspace
 - Interactive mind map canvas with drag, zoom, minimap, and controls
-- Branch color-coding and auto-balanced left/right layout
-- Collapse or expand branches
-- Edit node labels directly from the canvas
-- Export the map as PNG
-- Export the map as JSON
-- Save maps locally in the browser
-- Copy a shareable link with encoded map data
-- Example notes button
-- Dark mode toggle
-- Mobile-responsive layout
+- Branch collapse and inline node renaming
+- PNG export
+- JSON export
+- Local browser saves
+- Shareable links with encoded map data
+- Example notes
+- Light and dark theme toggle
+- Responsive layout
 
 ## Project Structure
 
@@ -35,141 +30,76 @@ Full-stack web app that turns pasted notes or paragraphs into an interactive vis
 client/
   src/
     components/
+    lib/
     pages/
     App.jsx
     main.jsx
-server/
-  controllers/
-  routes/
-  utils/
-  index.js
+  index.html
+  package.json
+  vercel.json
+  vite.config.js
 ```
 
-## Local Setup
+## Local Development
 
-### 1. Install dependencies
+1. Install dependencies:
 
 ```bash
 npm install
-npm install --workspace client
-npm install --workspace server
 ```
 
-### 2. Create env files
-
-Copy the examples:
+2. Create your local env file:
 
 ```bash
-cp client/.env.example client/.env
-cp server/.env.example server/.env
+cp .env.example .env
 ```
 
-### 3. Add your Gemini API key
-
-Set `GEMINI_API_KEY` inside [server/.env](/Users/apple/Downloads/VS-code/Vibecode/mindmap/server/.env.example).
-
-Optional server vars:
-
-- `GEMINI_MODEL=gemini-2.5-flash`
-- `PORT=5001`
-- `ALLOWED_ORIGIN=http://localhost:5173`
-
-Optional client vars:
-
-- `VITE_API_BASE_URL=http://localhost:5001/api`
-
-### 4. Run the app
-
-From the project root:
+3. Start the frontend:
 
 ```bash
 npm run dev
 ```
 
-Frontend: `http://localhost:5173`
+The dev server runs on `http://localhost:5173`.
 
-Backend health check: `http://localhost:5001/api/health`
+## Environment Variable
 
-## API
+This frontend uses one public env variable:
 
-### `POST /generate-mindmap`
-
-Also available at `POST /api/generate-mindmap`
-
-Request body:
-
-```json
-{
-  "text": "Your notes go here"
-}
+```bash
+VITE_API_BASE_URL=http://localhost:5001/api
 ```
 
-Response:
+For production on Vercel, set it to your deployed Render backend API URL, for example:
 
-```json
-{
-  "mindMap": {
-    "title": "Main Topic",
-    "nodes": [
-      {
-        "title": "Subtopic 1",
-        "children": ["Point A", "Point B"]
-      }
-    ]
-  },
-  "model": "gemini-2.5-flash"
-}
+```bash
+VITE_API_BASE_URL=https://your-backend.onrender.com/api
 ```
 
-## Gemini Prompt Used
+If `VITE_API_BASE_URL` is missing in production, the UI still loads, but AI generation is disabled and the app shows a setup message instead of silently failing.
 
-The backend wraps this user-facing prompt:
+## Deploy To Vercel
 
-```text
-Convert the following notes into a hierarchical mind map structure.
-Return ONLY JSON in this format:
-{
-  "title": "",
-  "nodes": [
-    { "title": "", "children": [] }
-  ]
-}
-Notes: [USER INPUT]
+1. Import the repository into Vercel.
+2. Set the Root Directory to `client`.
+3. Set the Framework Preset to `Vite` if Vercel does not detect it automatically.
+4. Add the environment variable `VITE_API_BASE_URL` and point it to your Render backend URL ending in `/api`.
+5. Deploy.
+
+This folder already includes [vercel.json](/Users/apple/Downloads/VS-code/Vibecode/mindmap/client/vercel.json) with an SPA rewrite so React Router routes like `/app` work after deployment.
+
+## Build
+
+Run a production build locally with:
+
+```bash
+npm run build
 ```
 
-The response is constrained with a JSON schema before it reaches the client.
-
-## Deployment
-
-### Frontend on Vercel
-
-1. Import the `client` folder as a Vercel project.
-2. Set `VITE_API_BASE_URL` to your deployed backend URL plus `/api`.
-3. Deploy.
-
-`client/vercel.json` already includes an SPA rewrite for React Router.
-
-### Backend on Render
-
-1. Create a new Web Service from this repository.
-2. Set the root directory to `server`.
-3. Build command: `npm install`
-4. Start command: `npm run start`
-5. Add:
-   - `GEMINI_API_KEY`
-   - `GEMINI_MODEL`
-   - `ALLOWED_ORIGIN`
-
-The root [render.yaml](/Users/apple/Downloads/VS-code/Vibecode/mindmap/render.yaml) can also be used as a starting point.
-
-### Backend on Railway
-
-1. Create a service from the `server` folder.
-2. Add the same environment variables.
-3. Start with `npm run start`.
+The build output is written to `dist/`.
 
 ## Notes
 
-- Saved mind maps are stored in browser local storage.
-- Share links encode map data in the URL, so very large maps may create long links.
-- Supabase persistence can be added later without changing the current UI architecture.
+- Saved mind maps live in browser local storage.
+- Share links store encoded map data in the URL, so very large maps can make long links.
+- The frontend does not contain backend code; it only calls the configured API base URL.

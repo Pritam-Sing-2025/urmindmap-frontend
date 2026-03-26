@@ -15,7 +15,8 @@ export default function TextPanel({
   onUseExample,
   savedMaps,
   onLoadSavedMap,
-  isLoading
+  isLoading,
+  isApiConfigured
 }) {
   return (
     <div className="glass-panel-strong mesh-background soft-scrollbar flex h-full flex-col rounded-[32px] p-6">
@@ -55,7 +56,13 @@ export default function TextPanel({
 
       <div className="mt-4 flex items-center justify-between gap-4 text-sm text-[color:var(--text-muted)]">
         <div>{notes.trim().length} characters</div>
-        <div>{isLoading ? 'Generating…' : 'Ready for AI processing'}</div>
+        <div>
+          {isLoading
+            ? 'Generating...'
+            : isApiConfigured
+              ? 'Ready for AI processing'
+              : 'Add VITE_API_BASE_URL to enable AI generation'}
+        </div>
       </div>
 
       <div className="mt-6">
